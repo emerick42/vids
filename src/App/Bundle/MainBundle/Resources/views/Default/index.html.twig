@@ -1,0 +1,9 @@
+{% if videos|length > 0 %}
+    <ul>
+        {% for video in videos %}
+            <li><a href="{{ video.url }}">{{ video.url }}</a></li>
+        {% endfor %}
+    </ul>
+{% else %}
+    {{ 'app_main.top.no_video'|trans }}
+{% endif %}
