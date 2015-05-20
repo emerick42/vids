@@ -5,3 +5,11 @@ login_route:
 login_check:
     path: /login_check
     defaults: { _controller: AppMainBundle:Security:loginCheck }
+
+app_main_security_register:
+    path: /register
+    defaults: { _controller: AppMainBundle:Security:register }
+
+app_main_security_confirm:
+    path: /confirm
+    defaults: { _controller: AppMainBundle:Security:confirm }

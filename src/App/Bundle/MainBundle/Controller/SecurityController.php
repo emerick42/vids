@@ -2,7 +2,11 @@
 
 namespace App\Bundle\MainBundle\Controller;
 
+use App\Bundle\MainBundle\Form\Model\Security\Registration;
+use App\Bundle\MainBundle\Form\Type\Security\RegistrationType;
+use App\Bundle\MainBundle\Security\User\User;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Handle security actions
@@ -39,5 +43,70 @@ class SecurityController extends Controller
      */
     public function loginCheckAction()
     {
+    }
+
+    /**
+     * Send a confirmation email to create a new user account
+     *
+     * @param Request $request
+     *
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function registerAction(Request $request)
+    {
+        $registration = new Registration();
+        $form         = $this->createForm(new RegistrationType(), $registration);
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $this->sendConfirmationEmail($registration);
+
+            $this->get('session')->getFlashBag()->add(
+                'notice',
+                $this->get('translator')->trans('security.register.notice.confirm')
+            );
+
+            return $this->redirectToRoute('app_main_homepage');
+        }
+
+        return $this->render('AppMainBundle:Security:register.html.twig', [
+            'form' => $form->createView(),
+        ]);
+    }
+
+    /**
+     * Send the confirmation email for the given registration
+     *
+     * @param Registration $registration
+     */
+    private function sendConfirmationEmail(Registration $registration)
+    {
+        $encoder         = $this->container->get('security.password_encoder');
+        $encodedPassword = $encoder->encodePassword(
+            new User(null, null, null, []),
+            $registration->password
+        );
+        $hasher          = $this->container->get('app_main.security.registration.hash_generator');
+        $securityToken   = $hasher->hash($registration->email, $encodedPassword);
+
+        $subject = $this->get('translator')->trans('security.registration.confirmation_email.title');
+        $content = $this->renderView(
+            'AppMainBundle:Security:Registration/confirmationEmail.html.twig',
+            [
+                'email'         => $registration->email,
+                'password'      => $encodedPassword,
+                'securityToken' => $securityToken,
+            ]
+        );
+
+        $message = \Swift_Message::newInstance()
+            ->setSubject($subject)
+            // @TODO Give the right sender's address
+            ->setFrom('admin@localhost')
+            ->setTo($registration->email)
+            ->setBody($content)
+        ;
+        $this->get('mailer')->send($message);
     }
 }
